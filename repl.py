@@ -12,11 +12,13 @@ Commands:
   i <ch> <current>     - Set current only
   measure <ch>         - Show measurements
   raw <command>        - Send raw SCPI command
+  sleep <seconds>      - Wait (useful for chained commands)
   help                 - Show this help
   quit                 - Exit
 """
 
 import sys
+import time
 import readline  # enables arrow keys, history
 from rigol import RigolDP832A, DEFAULT_DEVICE
 
@@ -112,6 +114,11 @@ def main():
             else:
                 psu.command(scpi)
                 print("OK")
+
+        elif cmd == 'sleep':
+            secs = float(args[0])
+            print(f"Sleeping {secs}s...")
+            time.sleep(secs)
 
         else:
             print(f"Unknown command: {cmd}. Type 'help' for commands.")
