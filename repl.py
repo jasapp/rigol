@@ -51,7 +51,72 @@ def main():
         print(f"Failed to connect: {e}")
         sys.exit(1)
 
-    print("Type 'help' for commands, 'quit' to exit.\n")
+    print("Type 'help' for commands, 'quit' to exit.")
+    print("Separate multiple commands with semicolons.\n")
+
+    def run_command(cmd, args):
+        """Run a single command. Returns False to quit, True to continue."""
+        if cmd in ('quit', 'exit', 'q'):
+            print("Bye!")
+            return False
+
+        elif cmd == 'help':
+            print_help()
+
+        elif cmd == 'status':
+            ch = int(args[0]) if args else None
+            print_status(psu, ch)
+
+        elif cmd == 'set':
+            ch, v, i = int(args[0]), float(args[1]), float(args[2])
+            psu.set_voltage(ch, v)
+            psu.set_current(ch, i)
+            print(f"CH{ch}: {v}V, {i}A")
+
+        elif cmd == 'on':
+            ch = int(args[0])
+            psu.output_on(ch)
+            print(f"CH{ch} ON")
+
+        elif cmd == 'off':
+            ch = int(args[0])
+            psu.output_off(ch)
+            print(f"CH{ch} OFF")
+
+        elif cmd == 'alloff':
+            psu.all_off()
+            print("All outputs OFF")
+
+        elif cmd == 'v':
+            ch, v = int(args[0]), float(args[1])
+            psu.set_voltage(ch, v)
+            print(f"CH{ch}: {v}V")
+
+        elif cmd == 'i':
+            ch, i = int(args[0]), float(args[1])
+            psu.set_current(ch, i)
+            print(f"CH{ch}: {i}A")
+
+        elif cmd == 'measure':
+            ch = int(args[0])
+            v = psu.measure_voltage(ch)
+            i = psu.measure_current(ch)
+            p = psu.measure_power(ch)
+            print(f"CH{ch}: {v:.4f}V  {i:.4f}A  {p:.3f}W")
+
+        elif cmd == 'raw':
+            scpi = ' '.join(args)
+            if '?' in scpi:
+                result = psu.query(scpi)
+                print(f"< {result}")
+            else:
+                psu.command(scpi)
+                print("OK")
+
+        else:
+            print(f"Unknown command: {cmd}. Type 'help' for commands.")
+
+        return True
 
     while True:
         try:
@@ -63,77 +128,28 @@ def main():
         if not line:
             continue
 
-        parts = line.split()
-        cmd = parts[0].lower()
-        args = parts[1:]
+        # Split on semicolons for multiple commands
+        commands = [c.strip() for c in line.split(';') if c.strip()]
 
-        try:
-            if cmd in ('quit', 'exit', 'q'):
-                print("Bye!")
-                break
+        should_quit = False
+        for single_cmd in commands:
+            parts = single_cmd.split()
+            cmd = parts[0].lower()
+            args = parts[1:]
 
-            elif cmd == 'help':
-                print_help()
+            try:
+                if not run_command(cmd, args):
+                    should_quit = True
+                    break
+            except IndexError:
+                print(f"Missing arguments for '{cmd}'. Type 'help' for usage.")
+            except ValueError as e:
+                print(f"Invalid value: {e}")
+            except Exception as e:
+                print(f"Error: {e}")
 
-            elif cmd == 'status':
-                ch = int(args[0]) if args else None
-                print_status(psu, ch)
-
-            elif cmd == 'set':
-                ch, v, i = int(args[0]), float(args[1]), float(args[2])
-                psu.set_voltage(ch, v)
-                psu.set_current(ch, i)
-                print(f"CH{ch}: {v}V, {i}A")
-
-            elif cmd == 'on':
-                ch = int(args[0])
-                psu.output_on(ch)
-                print(f"CH{ch} ON")
-
-            elif cmd == 'off':
-                ch = int(args[0])
-                psu.output_off(ch)
-                print(f"CH{ch} OFF")
-
-            elif cmd == 'alloff':
-                psu.all_off()
-                print("All outputs OFF")
-
-            elif cmd == 'v':
-                ch, v = int(args[0]), float(args[1])
-                psu.set_voltage(ch, v)
-                print(f"CH{ch}: {v}V")
-
-            elif cmd == 'i':
-                ch, i = int(args[0]), float(args[1])
-                psu.set_current(ch, i)
-                print(f"CH{ch}: {i}A")
-
-            elif cmd == 'measure':
-                ch = int(args[0])
-                v = psu.measure_voltage(ch)
-                i = psu.measure_current(ch)
-                p = psu.measure_power(ch)
-                print(f"CH{ch}: {v:.4f}V  {i:.4f}A  {p:.3f}W")
-
-            elif cmd == 'raw':
-                scpi = ' '.join(args)
-                if '?' in scpi:
-                    result = psu.query(scpi)
-                    print(f"< {result}")
-                else:
-                    psu.command(scpi)
-                    print("OK")
-
-            else:
-                print(f"Unknown command: {cmd}. Type 'help' for commands.")
-
-        except IndexError:
-            print("Missing arguments. Type 'help' for usage.")
-        except ValueError as e:
-            print(f"Invalid value: {e}")
-        except Exception as e:
-            print(f"Error: {e}")
+        if should_quit:
+            break
 
 
 if __name__ == '__main__':
